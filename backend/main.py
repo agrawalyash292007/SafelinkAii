@@ -8,6 +8,8 @@ app = FastAPI(
 )
 
 # Allow React frontend to access the API
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -15,6 +17,9 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:5174",
         "http://127.0.0.1:5174",
+
+        # Your deployed frontend
+        "https://safe-link-ai-igpo.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
