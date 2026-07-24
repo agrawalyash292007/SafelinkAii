@@ -21,21 +21,64 @@ export default function DownloadReportButton({ report }) {
     doc.line(14, 31, 195, 31);
 
     // ===== Overview =====
-    autoTable(doc, {
-      startY: 38,
-      head: [["Overview", ""]],
-      body: [
-        ["Website", report.url],
-        ["Risk Level", report.risk?.level || "Unknown"],
-        ["Risk Score", `${report.risk?.score ?? 0}/100`],
-        ["Scan Time", report.scan_time || "N/A"],
-      ],
-    });
+    // ===== Overview =====
+autoTable(doc, {
+  startY: 38,
+  theme: "grid",
+  headStyles: {
+    fillColor: [37, 99, 235],
+    textColor: 255,
+    fontStyle: "bold",
+  },
+  body: [
+    ["Website", report.normalized_url || report.url || "N/A"],
+    ["Risk Level", report.risk?.level || "Unknown"],
+    ["Risk Score", `${report.risk?.score ?? 0}/100`],
+    ["Scan Time", new Date().toLocaleString()],
+  ],
+});
+const risk = (report.risk?.level || "UNKNOWN").toUpperCase();
 
+let badgeColor = [34, 197, 94]; // Green
+
+if (risk === "MEDIUM") {
+  badgeColor = [245, 158, 11]; // Yellow
+}
+
+if (risk === "HIGH") {
+  badgeColor = [239, 68, 68]; // Red
+}
+
+const y = doc.lastAutoTable.finalY + 10;
+
+// Risk Badge
+doc.setFillColor(...badgeColor);
+doc.roundedRect(14, y, 40, 10, 2, 2, "F");
+doc.setTextColor(255);
+doc.setFontSize(11);
+doc.setFont("helvetica", "bold");
+doc.text(risk, 25, y + 7);
+
+// Threat Score Badge
+doc.setFillColor(59, 130, 246);
+doc.roundedRect(65, y, 50, 10, 2, 2, "F");
+doc.text(
+  `${report.risk?.score ?? 0}/100`,
+  78,
+  y + 7
+);
+
+// Reset text color
+doc.setTextColor(0);
     // ===== SSL =====
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 8,
       head: [["SSL Information", ""]],
+headStyles: {
+  fillColor: [37, 99, 235],
+  textColor: 255,
+  fontStyle: "bold",
+},
       body: [
         ["Status", report.ssl?.valid ? "Valid" : "Invalid"],
         ["Issuer", report.ssl?.issuer || "N/A"],
@@ -50,7 +93,10 @@ export default function DownloadReportButton({ report }) {
       head: [["Domain Information", ""]],
       body: [
         ["Registrar", report.whois?.registrar || "N/A"],
-        ["Domain Age", `${report.whois?.domain_age_years || 0} Years`],
+        [
+          "Domain Age",
+          `${report.whois?.domain_age_years ?? "Unknown"} Years`,
+        ],
         ["Country", report.whois?.country || "N/A"],
       ],
     });
@@ -71,18 +117,14 @@ export default function DownloadReportButton({ report }) {
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 8,
       head: [["AI Analysis"]],
-      body: [
-        [report.ai?.summary || "No summary available"],
-      ],
+      body: [[report.ai?.summary || "No summary available"]],
     });
 
     // ===== Recommendation =====
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 8,
       head: [["Recommendation"]],
-      body: [
-        [report.ai?.recommendation || "No recommendation available"],
-      ],
+      body: [[report.ai?.recommendation || "No recommendation available"]],
     });
 
     // ===== Footer =====
@@ -94,9 +136,9 @@ export default function DownloadReportButton({ report }) {
     );
 
     const filename =
-      report.normalized_url
-        ?.replace(/^https?:\/\//, "")
-        .replace(/[^\w.-]/g, "_") || "report";
+      (report.normalized_url || report.url || "report")
+        .replace(/^https?:\/\//, "")
+        .replace(/[^\w.-]/g, "_");
 
     doc.save(`SafeLink_Report_${filename}.pdf`);
   };
@@ -104,7 +146,7 @@ export default function DownloadReportButton({ report }) {
   return (
     <button
       onClick={downloadPDF}
-      className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700"
+      className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-700"
     >
       <Download size={18} />
       Download Report

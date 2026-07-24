@@ -9,6 +9,8 @@ import {
   Globe,
   Bug,
 } from "lucide-react";
+import DownloadReportButton from "../components/report/DownloadReportButton";
+import DownloadReportButton from "../components/report/DownloadReportButton";
 
 import AIExplanation from "../components/report/AIExplanation";
 import Recommendations from "../components/report/Recommendations";
@@ -335,9 +337,15 @@ export default function Analyze() {
         </div>
 
         {/* Technical Details */}
-        <div className="mt-8">
-          <TechnicalDetails report={report} />
-        </div>
+       {/* Technical Details */}
+<div className="mt-8">
+  <TechnicalDetails report={report} />
+</div>
+
+{/* Download Report */}
+<div className="mt-8 flex justify-center">
+  <DownloadReportButton report={report} />
+</div>
       </div>
     </main>
   );
