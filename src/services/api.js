@@ -3,31 +3,40 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://safelink-ai-backend.onrender.com';
 
 /**
- * Normalizes input URLs to ensure valid protocol structure
+ * Clean & sanitize URL input
  */
-export const normalizeUrl = (input) => {
+export const sanitizeInputUrl = (input) => {
   if (!input) return '';
-  let trimmed = input.trim().toLowerCase();
-  if (!/^https?:\/\//i.test(trimmed)) {
-    trimmed = `https://${trimmed}`;
+  let cleaned = input.trim();
+
+  // Prepend https:// if missing
+  if (!/^https?:\/\//i.test(cleaned)) {
+    cleaned = `https://${cleaned}`;
   }
+
   try {
-    const parsed = new URL(trimmed);
-    return parsed.href;
+    const urlObj = new URL(cleaned);
+    // Remove invalid single-digit ports like :1
+    if (urlObj.port && urlObj.port.length < 2) {
+      urlObj.port = '';
+    }
+    return urlObj.href;
   } catch {
-    return trimmed;
+    return cleaned;
   }
 };
 
 export const scanURL = async (rawUrl) => {
-  const cleanUrl = normalizeUrl(rawUrl);
+  const targetUrl = sanitizeInputUrl(rawUrl);
 
   const response = await axios.post(
     `${API_BASE_URL}/api/scan`,
-    { url: cleanUrl },
+    { url: targetUrl },
     {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 15000,
+      headers: { 
+        'Content-Type': 'application/json' 
+      },
+      timeout: 12000,
     }
   );
 
