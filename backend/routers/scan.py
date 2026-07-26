@@ -1,89 +1,52 @@
-from datetime import datetime, timezone
-
+import asyncio
 from fastapi import APIRouter, HTTPException
-
 from models.scan_models import ScanRequest
-
-from services.url_validator import normalize_url
-from services.ssl_checker import check_ssl
+from services.url_validator import normalize_and_validate_url
 from services.whois_checker import check_whois
-from services.dns_checker import check_dns
-from services.http_checker import check_http
+from services.ssl_checker import check_ssl
 from services.virustotal_checker import check_virustotal
-from services.urlscan_checker import check_urlscan
-from services.risk_engine import calculate_risk
+from services.dns_checker import check_dns
 from services.ai_summary import generate_ai_summary
+from services.risk_engine import calculate_risk
 
-router = APIRouter(
-    prefix="/api",
-    tags=["Scanner"]
-)
-
+router = APIRouter(prefix="/api", tags=["scan"])
 
 @router.post("/scan")
-def scan(request: ScanRequest):
-
+async def perform_scan(request: ScanRequest):
     try:
-        # Normalize URL
-        normalized = normalize_url(request.url)
+        # 1. Normalize input (Handles bare domains like google.com)
+        url_info = normalize_and_validate_url(request.url)
+        hostname = url_info["hostname"]
+        full_url = url_info["normalized_url"]
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
 
-        # Run all scanners
-        ssl_info = check_ssl(normalized)
-        whois_info = check_whois(normalized)
-        dns_info = check_dns(normalized)
-        http_info = check_http(normalized)
-        virustotal_info = check_virustotal(normalized)
-        urlscan_info = check_urlscan(normalized)
+    # 2. Execute service checks concurrently without crashing on single failures
+    results = await asyncio.gather(
+        check_ssl(hostname),
+        check_whois(hostname),
+        check_virustotal(hostname),
+        check_dns(hostname),
+        return_exceptions=True
+    )
 
-        # Calculate Risk
-        risk_info = calculate_risk(
-            ssl_info,
-            whois_info,
-            dns_info,
-            http_info,
-            virustotal_info,
-            urlscan_info
-        )
+    ssl_data = results[0] if not isinstance(results[0], Exception) else {"valid": False}
+    whois_data = results[1] if not isinstance(results[1], Exception) else {"registrar": "Unknown"}
+    vt_data = results[2] if not isinstance(results[2], Exception) else {"malicious": 0, "suspicious": 0}
+    dns_data = results[3] if not isinstance(results[3], Exception) else {}
 
-        # Generate AI Summary
-        ai_info = generate_ai_summary(
-            ssl_info,
-            whois_info,
-            http_info,
-            virustotal_info,
-            urlscan_info,
-            risk_info
-        )
+    # 3. Calculate Risk & AI Metrics
+    risk = calculate_risk(ssl_data, whois_data, vt_data)
+    ai_analysis = await generate_ai_summary(hostname, risk, ssl_data, vt_data)
 
-        return {
-            "success": True,
-            "message": "Scan completed successfully",
-            "data": {
-
-                "url": request.url,
-                "normalized_url": normalized,
-                "scan_time": datetime.now(
-                    timezone.utc
-                ).isoformat(),
-
-                "ssl": ssl_info,
-                "whois": whois_info,
-                "dns": dns_info,
-                "http": http_info,
-                "virustotal": virustotal_info,
-                "urlscan": urlscan_info,
-
-                # Reserved for future APIs
-                "phishtank": {},
-
-                "risk": risk_info,
-
-                "ai": ai_info
-            }
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
+    return {
+        "normalized_url": full_url,
+        "hostname": hostname,
+        "scanned_at": datetime.utcnow().isoformat(),
+        "risk": risk,
+        "ssl": ssl_data,
+        "whois": whois_data,
+        "dns": dns_data,
+        "virustotal": vt_data,
+        "ai": ai_analysis
+    }

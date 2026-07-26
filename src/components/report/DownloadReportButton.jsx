@@ -1,165 +1,269 @@
-import { Download } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import React, { useState } from 'react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
-export default function DownloadReportButton({ report }) {
-  if (!report) return null;
+const DownloadReportButton = ({ report }) => {
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const downloadPDF = () => {
+  const handleDownloadPDF = () => {
+    if (!report) {
+      alert('Report data is not available.');
+      return;
+    }
+
     try {
-      console.log("Downloading report...");
-      console.log(report);
+      setIsGenerating(true);
 
-      const doc = new jsPDF();
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
 
-      // ---------------- Title ----------------
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(22);
-      doc.text("SafeLink AI", 14, 18);
+      const primaryColor = [15, 23, 42];  // Slate 900
+      const accentCyan = [6, 182, 212];    // Cyan 500
+      const textDark = [30, 41, 59];      // Slate 800
+      const textMuted = [100, 116, 139];  // Slate 500
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(13);
-      doc.text("Website Security Analysis Report", 14, 27);
-
-      doc.setDrawColor(37, 99, 235);
-      doc.setLineWidth(0.5);
-      doc.line(14, 31, 195, 31);
-
-      // Helper function for consistent tables
-      const addTable = (options) => {
-        autoTable(doc, {
-          theme: "grid",
-          styles: {
-            font: "helvetica",
-            fontSize: 10,
-            cellPadding: 3,
-          },
-          headStyles: {
-            fillColor: [37, 99, 235],
-            textColor: 255,
-            fontStyle: "bold",
-          },
-          ...options,
-        });
+      const getRiskRGB = (level = '') => {
+        const l = String(level).toUpperCase();
+        if (l === 'HIGH' || l === 'CRITICAL') return [225, 29, 72];
+        if (l === 'MEDIUM' || l === 'MODERATE') return [234, 88, 12];
+        return [16, 185, 129];
       };
 
-      // ---------------- Overview ----------------
-      addTable({
-        startY: 38,
-        body: [
-          ["Website", report.normalized_url || report.url || "N/A"],
-          ["Risk Level", report.risk?.level || "Unknown"],
-          ["Risk Score", `${report.risk?.score ?? 0}/100`],
-          ["Scan Time", new Date().toLocaleString()],
-        ],
-      });
+      const riskLevel = report.risk?.level || 'LOW';
+      const riskScore = report.risk?.score ?? 10;
+      const targetUrl = report.normalized_url || report.url || 'N/A';
+      const scanTime = report.scanned_at || new Date().toLocaleString();
+      const riskRGB = getRiskRGB(riskLevel);
 
-      const tableY = doc.lastAutoTable?.finalY || 70;
+      // --- 1. HEADER BANNER ---
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, 210, 32, 'F');
 
-      // ---------------- Risk Badge ----------------
-      const risk = (report.risk?.level || "UNKNOWN").toUpperCase();
+      doc.setFillColor(...accentCyan);
+      doc.rect(0, 31, 210, 1, 'F');
 
-      let badgeColor = [34, 197, 94];
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(255, 255, 255);
+      doc.text('SAFELINK AI', 14, 16);
 
-      if (risk === "MEDIUM") badgeColor = [245, 158, 11];
-      if (risk === "HIGH") badgeColor = [239, 68, 68];
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text('CYBERSECURITY & THREAT INTELLIGENCE REPORT', 14, 23);
 
-      const badgeY = tableY + 10;
+      doc.setFontSize(8);
+      doc.text(`Generated: ${scanTime}`, 196, 23, { align: 'right' });
 
-      doc.setFillColor(...badgeColor);
-      doc.roundedRect(14, badgeY, 40, 10, 2, 2, "F");
+      // --- 2. EXECUTIVE SUMMARY BOX ---
+      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(14, 38, 182, 34, 2, 2, 'FD');
 
-      doc.setTextColor(255);
-      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...textMuted);
+      doc.text('TARGET URL / DOMAIN:', 20, 46);
+
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...textDark);
+      doc.text(doc.splitTextToSize(targetUrl, 115), 20, 53);
+
+      // Risk Badge Box
+      doc.setFillColor(...riskRGB);
+      doc.roundedRect(142, 43, 48, 24, 2, 2, 'F');
+
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text('RISK ASSESSMENT', 166, 49, { align: 'center' });
+
+      doc.setFontSize(13);
+      doc.text(`${riskLevel}`, 166, 56, { align: 'center' });
+
+      doc.setFontSize(8);
+      doc.text(`Score: ${riskScore} / 100`, 166, 62, { align: 'center' });
+
+      let currentY = 80;
+
+      // --- 3. AI SUMMARY ---
       doc.setFontSize(11);
-      doc.text(risk, 24, badgeY + 7);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('1. AI Threat Summary', 14, currentY);
 
-      doc.setFillColor(59, 130, 246);
-      doc.roundedRect(65, badgeY, 45, 10, 2, 2, "F");
-      doc.text(`${report.risk?.score ?? 0}/100`, 78, badgeY + 7);
+      currentY += 3;
+      const aiSummary = report.ai?.summary || report.ai?.explanation || 'Threat analysis complete. Domain evaluated.';
+      const splitSummary = doc.splitTextToSize(aiSummary, 182);
 
-      doc.setTextColor(0);
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Executive Brief']],
+        body: [[splitSummary]],
+        theme: 'grid',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
+        bodyStyles: { textColor: textDark, fontSize: 8, cellPadding: 4 },
+        margin: { left: 14, right: 14 },
+      });
 
-      // ---------------- SSL ----------------
-      addTable({
-        startY: badgeY + 18,
-        head: [["SSL Information", ""]],
+      currentY = doc.lastAutoTable.finalY + 8;
+
+      // --- 4. SSL & WHOIS TABLE ---
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('2. Domain & Infrastructure Analysis', 14, currentY);
+
+      currentY += 3;
+
+      const sslStatus = report.ssl?.valid ? 'Valid & Trusted' : 'Invalid / Untrusted';
+      const sslIssuer = report.ssl?.issuer || 'Unknown CA';
+      const sslDays = report.ssl?.days_remaining ?? 'N/A';
+
+      const registrar = report.whois?.registrar || 'Unknown Registrar';
+      const creationDate = report.whois?.created_date || 'Unknown';
+      const domainAge = report.whois?.age_days ? `${report.whois.age_days} days` : 'N/A';
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Metric', 'SSL Certificate Data', 'WHOIS Record']],
         body: [
-          ["Status", report.ssl?.valid ? "Valid" : "Invalid"],
-          ["Issuer", report.ssl?.issuer || "N/A"],
-          ["Issued To", report.ssl?.issued_to || "N/A"],
-          ["Expires", report.ssl?.expires || "N/A"],
+          ['Issuer / Registrar', sslIssuer, registrar],
+          ['Status / Domain Age', sslStatus, domainAge],
+          ['Validity / Created', `Days Remaining: ${sslDays}`, creationDate],
         ],
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
+        bodyStyles: { textColor: textDark, fontSize: 8 },
+        columnStyles: { 0: { fontStyle: 'bold', width: 38 } },
+        margin: { left: 14, right: 14 },
       });
 
-      // ---------------- Domain ----------------
-      addTable({
-        startY: (doc.lastAutoTable?.finalY || badgeY + 18) + 8,
-        head: [["Domain Information", ""]],
+      currentY = doc.lastAutoTable.finalY + 8;
+
+      // --- 5. VIRUSTOTAL RESULTS ---
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('3. Security Engines Scan', 14, currentY);
+
+      currentY += 3;
+
+      const vtMalicious = report.virustotal?.malicious ?? 0;
+      const vtSuspicious = report.virustotal?.suspicious ?? 0;
+      const vtHarmless = report.virustotal?.harmless ?? 0;
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Classification', 'Engine Detections', 'Security Status']],
         body: [
-          ["Registrar", report.whois?.registrar || "N/A"],
-          [
-            "Domain Age",
-            `${report.whois?.domain_age_years ?? "Unknown"} Years`,
-          ],
-          ["Country", report.whois?.country || "N/A"],
+          ['Malicious Flagged', `${vtMalicious}`, vtMalicious > 0 ? 'CRITICAL RISK' : 'CLEAN'],
+          ['Suspicious Flagged', `${vtSuspicious}`, vtSuspicious > 0 ? 'WARNING' : 'CLEAN'],
+          ['Harmless / Verified', `${vtHarmless}`, 'PASSED'],
         ],
+        theme: 'grid',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
+        bodyStyles: { textColor: textDark, fontSize: 8 },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 2) {
+            const val = data.cell.raw;
+            if (val === 'CRITICAL RISK') data.cell.styles.textColor = [225, 29, 72];
+            else if (val === 'WARNING') data.cell.styles.textColor = [234, 88, 12];
+            else if (val === 'CLEAN' || val === 'PASSED') data.cell.styles.textColor = [16, 185, 129];
+          }
+        },
+        margin: { left: 14, right: 14 },
       });
 
-      // ---------------- VirusTotal ----------------
-      addTable({
-        startY: (doc.lastAutoTable?.finalY || 120) + 8,
-        head: [["VirusTotal", ""]],
-        body: [
-          ["Malicious", report.virustotal?.malicious ?? 0],
-          ["Suspicious", report.virustotal?.suspicious ?? 0],
-          ["Harmless", report.virustotal?.harmless ?? 0],
-          ["Undetected", report.virustotal?.undetected ?? 0],
-        ],
+      currentY = doc.lastAutoTable.finalY + 8;
+
+      // --- 6. RECOMMENDATIONS ---
+      if (currentY + 25 > 270) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('4. Recommended Actions', 14, currentY);
+
+      currentY += 3;
+
+      const recommendations = Array.isArray(report.ai?.recommendations)
+        ? report.ai.recommendations.map((rec) => [rec])
+        : [[report.ai?.recommendation || 'Standard security awareness advised.']];
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Action Guidance']],
+        body: recommendations,
+        theme: 'plain',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
+        bodyStyles: { textColor: textDark, fontSize: 8, cellPadding: 2.5 },
+        margin: { left: 14, right: 14 },
       });
 
-      // ---------------- AI Summary ----------------
-      addTable({
-        startY: (doc.lastAutoTable?.finalY || 160) + 8,
-        head: [["AI Summary"]],
-        body: [[report.ai?.summary || "No summary available"]],
-      });
+      // --- 7. FOOTER ---
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...textMuted);
+        doc.setDrawColor(226, 232, 240);
+        doc.line(14, 283, 196, 283);
 
-      // ---------------- Recommendation ----------------
-      addTable({
-        startY: (doc.lastAutoTable?.finalY || 190) + 8,
-        head: [["Recommendation"]],
-        body: [[report.ai?.recommendation || "No recommendation available"]],
-      });
+        doc.text('SafeLink AI Security Platform • Automated Security Report', 14, 288);
+        doc.text(`Page ${i} of ${totalPages}`, 196, 288, { align: 'right' });
+      }
 
-      // ---------------- Footer ----------------
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-
-      doc.text(
-        "Generated by SafeLink AI",
-        14,
-        doc.internal.pageSize.height - 10
-      );
-
-      const filename = (report.normalized_url || report.url || "report")
-        .replace(/^https?:\/\//, "")
-        .replace(/[^\w.-]/g, "_");
-
-      doc.save(`SafeLink_Report_${filename}.pdf`);
-    } catch (error) {
-      console.error("PDF Generation Error:", error);
-      alert("Failed to generate PDF. Check the console for details.");
+      const safeName = targetUrl.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+      doc.save(`SafeLink_Report_${safeName}.pdf`);
+    } catch (err) {
+      console.error('PDF Generation Error:', err);
+      alert('Failed to generate PDF. Check browser console.');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   return (
     <button
-      onClick={downloadPDF}
-      className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-700 hover:shadow-lg"
+      type="button"
+      onClick={handleDownloadPDF}
+      disabled={isGenerating || !report}
+      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium text-sm rounded-lg shadow-lg shadow-cyan-500/20 border border-cyan-400/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
     >
-      <Download size={18} />
-      Download Report
+      <svg
+        className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`}
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        {isGenerating ? (
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
+        ) : (
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        )}
+      </svg>
+      {isGenerating ? 'Generating PDF...' : 'Download Security Report'}
     </button>
   );
-}
+};
+
+export default DownloadReportButton;
