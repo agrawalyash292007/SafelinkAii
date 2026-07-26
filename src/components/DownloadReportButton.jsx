@@ -6,147 +6,157 @@ export default function DownloadReportButton({ report }) {
   if (!report) return null;
 
   const downloadPDF = () => {
-    const doc = new jsPDF();
+    try {
+      console.log("Downloading report...");
+      console.log(report);
 
-    // ===== Title =====
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text("SafeLink AI", 14, 18);
+      const doc = new jsPDF();
 
-    doc.setFontSize(13);
-    doc.setFont("helvetica", "normal");
-    doc.text("Website Security Analysis Report", 14, 27);
+      // ---------------- Title ----------------
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text("SafeLink AI", 14, 18);
 
-    doc.setDrawColor(70, 130, 255);
-    doc.line(14, 31, 195, 31);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(13);
+      doc.text("Website Security Analysis Report", 14, 27);
 
-    // ===== Overview =====
-    // ===== Overview =====
-autoTable(doc, {
-  startY: 38,
-  theme: "grid",
-  headStyles: {
-    fillColor: [37, 99, 235],
-    textColor: 255,
-    fontStyle: "bold",
-  },
-  body: [
-    ["Website", report.normalized_url || report.url || "N/A"],
-    ["Risk Level", report.risk?.level || "Unknown"],
-    ["Risk Score", `${report.risk?.score ?? 0}/100`],
-    ["Scan Time", new Date().toLocaleString()],
-  ],
-});
-const risk = (report.risk?.level || "UNKNOWN").toUpperCase();
+      doc.setDrawColor(37, 99, 235);
+      doc.setLineWidth(0.5);
+      doc.line(14, 31, 195, 31);
 
-let badgeColor = [34, 197, 94]; // Green
+      // Helper function for consistent tables
+      const addTable = (options) => {
+        autoTable(doc, {
+          theme: "grid",
+          styles: {
+            font: "helvetica",
+            fontSize: 10,
+            cellPadding: 3,
+          },
+          headStyles: {
+            fillColor: [37, 99, 235],
+            textColor: 255,
+            fontStyle: "bold",
+          },
+          ...options,
+        });
+      };
 
-if (risk === "MEDIUM") {
-  badgeColor = [245, 158, 11]; // Yellow
-}
-
-if (risk === "HIGH") {
-  badgeColor = [239, 68, 68]; // Red
-}
-
-const y = doc.lastAutoTable.finalY + 10;
-
-// Risk Badge
-doc.setFillColor(...badgeColor);
-doc.roundedRect(14, y, 40, 10, 2, 2, "F");
-doc.setTextColor(255);
-doc.setFontSize(11);
-doc.setFont("helvetica", "bold");
-doc.text(risk, 25, y + 7);
-
-// Threat Score Badge
-doc.setFillColor(59, 130, 246);
-doc.roundedRect(65, y, 50, 10, 2, 2, "F");
-doc.text(
-  `${report.risk?.score ?? 0}/100`,
-  78,
-  y + 7
-);
-
-// Reset text color
-doc.setTextColor(0);
-    // ===== SSL =====
-    autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 8,
-      head: [["SSL Information", ""]],
-headStyles: {
-  fillColor: [37, 99, 235],
-  textColor: 255,
-  fontStyle: "bold",
-},
-      body: [
-        ["Status", report.ssl?.valid ? "Valid" : "Invalid"],
-        ["Issuer", report.ssl?.issuer || "N/A"],
-        ["Issued To", report.ssl?.issued_to || "N/A"],
-        ["Expires", report.ssl?.expires || "N/A"],
-      ],
-    });
-
-    // ===== Domain =====
-    autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 8,
-      head: [["Domain Information", ""]],
-      body: [
-        ["Registrar", report.whois?.registrar || "N/A"],
-        [
-          "Domain Age",
-          `${report.whois?.domain_age_years ?? "Unknown"} Years`,
+      // ---------------- Overview ----------------
+      addTable({
+        startY: 38,
+        body: [
+          ["Website", report.normalized_url || report.url || "N/A"],
+          ["Risk Level", report.risk?.level || "Unknown"],
+          ["Risk Score", `${report.risk?.score ?? 0}/100`],
+          ["Scan Time", new Date().toLocaleString()],
         ],
-        ["Country", report.whois?.country || "N/A"],
-      ],
-    });
+      });
 
-    // ===== VirusTotal =====
-    autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 8,
-      head: [["VirusTotal", ""]],
-      body: [
-        ["Malicious", report.virustotal?.malicious ?? 0],
-        ["Suspicious", report.virustotal?.suspicious ?? 0],
-        ["Harmless", report.virustotal?.harmless ?? 0],
-        ["Undetected", report.virustotal?.undetected ?? 0],
-      ],
-    });
+      const tableY = doc.lastAutoTable?.finalY || 70;
 
-    // ===== AI Summary =====
-    autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 8,
-      head: [["AI Analysis"]],
-      body: [[report.ai?.summary || "No summary available"]],
-    });
+      // ---------------- Risk Badge ----------------
+      const risk = (report.risk?.level || "UNKNOWN").toUpperCase();
 
-    // ===== Recommendation =====
-    autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 8,
-      head: [["Recommendation"]],
-      body: [[report.ai?.recommendation || "No recommendation available"]],
-    });
+      let badgeColor = [34, 197, 94];
 
-    // ===== Footer =====
-    doc.setFontSize(10);
-    doc.text(
-      "Generated by SafeLink AI",
-      14,
-      doc.internal.pageSize.height - 10
-    );
+      if (risk === "MEDIUM") badgeColor = [245, 158, 11];
+      if (risk === "HIGH") badgeColor = [239, 68, 68];
 
-    const filename =
-      (report.normalized_url || report.url || "report")
+      const badgeY = tableY + 10;
+
+      doc.setFillColor(...badgeColor);
+      doc.roundedRect(14, badgeY, 40, 10, 2, 2, "F");
+
+      doc.setTextColor(255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text(risk, 24, badgeY + 7);
+
+      doc.setFillColor(59, 130, 246);
+      doc.roundedRect(65, badgeY, 45, 10, 2, 2, "F");
+      doc.text(`${report.risk?.score ?? 0}/100`, 78, badgeY + 7);
+
+      doc.setTextColor(0);
+
+      // ---------------- SSL ----------------
+      addTable({
+        startY: badgeY + 18,
+        head: [["SSL Information", ""]],
+        body: [
+          ["Status", report.ssl?.valid ? "Valid" : "Invalid"],
+          ["Issuer", report.ssl?.issuer || "N/A"],
+          ["Issued To", report.ssl?.issued_to || "N/A"],
+          ["Expires", report.ssl?.expires || "N/A"],
+        ],
+      });
+
+      // ---------------- Domain ----------------
+      addTable({
+        startY: (doc.lastAutoTable?.finalY || badgeY + 18) + 8,
+        head: [["Domain Information", ""]],
+        body: [
+          ["Registrar", report.whois?.registrar || "N/A"],
+          [
+            "Domain Age",
+            `${report.whois?.domain_age_years ?? "Unknown"} Years`,
+          ],
+          ["Country", report.whois?.country || "N/A"],
+        ],
+      });
+
+      // ---------------- VirusTotal ----------------
+      addTable({
+        startY: (doc.lastAutoTable?.finalY || 120) + 8,
+        head: [["VirusTotal", ""]],
+        body: [
+          ["Malicious", report.virustotal?.malicious ?? 0],
+          ["Suspicious", report.virustotal?.suspicious ?? 0],
+          ["Harmless", report.virustotal?.harmless ?? 0],
+          ["Undetected", report.virustotal?.undetected ?? 0],
+        ],
+      });
+
+      // ---------------- AI Summary ----------------
+      addTable({
+        startY: (doc.lastAutoTable?.finalY || 160) + 8,
+        head: [["AI Summary"]],
+        body: [[report.ai?.summary || "No summary available"]],
+      });
+
+      // ---------------- Recommendation ----------------
+      addTable({
+        startY: (doc.lastAutoTable?.finalY || 190) + 8,
+        head: [["Recommendation"]],
+        body: [[report.ai?.recommendation || "No recommendation available"]],
+      });
+
+      // ---------------- Footer ----------------
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+
+      doc.text(
+        "Generated by SafeLink AI",
+        14,
+        doc.internal.pageSize.height - 10
+      );
+
+      const filename = (report.normalized_url || report.url || "report")
         .replace(/^https?:\/\//, "")
         .replace(/[^\w.-]/g, "_");
 
-    doc.save(`SafeLink_Report_${filename}.pdf`);
+      doc.save(`SafeLink_Report_${filename}.pdf`);
+    } catch (error) {
+      console.error("PDF Generation Error:", error);
+      alert("Failed to generate PDF. Check the console for details.");
+    }
   };
 
   return (
     <button
       onClick={downloadPDF}
-      className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-700"
+      className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-700 hover:shadow-lg"
     >
       <Download size={18} />
       Download Report
