@@ -10,7 +10,7 @@ import {
   Bug,
 } from "lucide-react";
 import DownloadReportButton from "../components/report/DownloadReportButton";
-import DownloadReportButton from "../components/report/DownloadReportButton";
+
 
 import AIExplanation from "../components/report/AIExplanation";
 import Recommendations from "../components/report/Recommendations";
