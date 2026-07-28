@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 // Clean the URL before sending it to FastAPI
 const cleanUrl = (inputUrl) => {
   if (!inputUrl) return '';
@@ -13,10 +15,10 @@ const cleanUrl = (inputUrl) => {
 };
 
 // Inside your scan handle function:
-export const handleScan = async (userInput) => {
+export const scanURL = async (userInput) => {
   const sanitizedUrl = cleanUrl(userInput);
 
-  return await axios.post(
+  const response = await axios.post(
     'https://safelink-ai-backend.onrender.com/api/scan',
     { url: sanitizedUrl },
     {
@@ -24,4 +26,6 @@ export const handleScan = async (userInput) => {
       timeout: 15000 // Give Render enough time to respond
     }
   );
+
+  return response.data;
 };
