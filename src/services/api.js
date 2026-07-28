@@ -14,18 +14,38 @@ const cleanUrl = (inputUrl) => {
   return url;
 };
 
+const BACKEND_URL = 'https://safelink-ai-d5f8.onrender.com';
+
+const postScan = (sanitizedUrl, timeout) =>
+  axios.post(
+    `${BACKEND_URL}/api/scan`,
+    { url: sanitizedUrl },
+    {
+      headers: { 'Content-Type': 'application/json' },
+      timeout
+    }
+  );
+
 // Inside your scan handle function:
 export const scanURL = async (userInput) => {
   const sanitizedUrl = cleanUrl(userInput);
 
-  const response = await axios.post(
-    'https://safelink-ai-backend.onrender.com/api/scan',
-    { url: sanitizedUrl },
-    {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 15000 // Give Render enough time to respond
-    }
-  );
+  try {
+    // First attempt: assume the backend is warm.
+    const response = await postScan(sanitizedUrl, 15000);
+    return response.data;
+  } catch (err) {
+    // If the first attempt timed out or failed to connect, the Render free-tier
+    // instance was likely asleep and is now waking up. Retry once with a much
+    // longer timeout instead of surfacing a hard failure immediately.
+    const isTimeoutOrNetworkError =
+      err.code === 'ECONNABORTED' || !err.response;
 
-  return response.data;
+    if (!isTimeoutOrNetworkError) {
+      throw err;
+    }
+
+    const response = await postScan(sanitizedUrl, 45000);
+    return response.data;
+  }
 };
