@@ -14,7 +14,8 @@ const cleanUrl = (inputUrl) => {
   return url;
 };
 
-const BACKEND_URL = 'https://safelink-ai-d5f8.onrender.com';
+const BACKEND_URL =
+  import.meta.env.VITE_API_BASE_URL || 'https://safelink-ai-d5f8.onrender.com';
 
 const postScan = (sanitizedUrl, timeout) =>
   axios.post(
