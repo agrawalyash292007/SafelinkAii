@@ -5,11 +5,18 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 
+def _hostname(value: str):
+    parsed = urlparse(value if "://" in value else f"//{value}")
+    return parsed.hostname
+
+
 def check_ssl(url: str):
 
     try:
 
-        hostname = urlparse(url).hostname
+        hostname = _hostname(url)
+        if not hostname:
+            raise ValueError("Invalid hostname")
 
         context = ssl.create_default_context()
 

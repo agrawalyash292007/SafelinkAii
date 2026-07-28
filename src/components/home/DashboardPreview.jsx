@@ -4,9 +4,7 @@ import {
   Globe,
   Lock,
   Brain,
-  Clock,
   Activity,
-  CheckCircle2,
 } from "lucide-react";
 
 export default function DashboardPreview() {

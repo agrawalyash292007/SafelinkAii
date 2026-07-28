@@ -1,5 +1,4 @@
 import {
-  ShieldAlert,
   Download,
   RefreshCw,
 } from "lucide-react";

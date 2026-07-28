@@ -3,6 +3,11 @@ import socket
 from urllib.parse import urlparse
 
 
+def _hostname(value: str):
+    parsed = urlparse(value if "://" in value else f"//{value}")
+    return parsed.hostname
+
+
 def resolve_record(domain, record_type):
     try:
         answers = dns.resolver.resolve(domain, record_type)
@@ -15,7 +20,9 @@ def check_dns(url: str):
 
     try:
 
-        hostname = urlparse(url).hostname
+        hostname = _hostname(url)
+        if not hostname:
+            raise ValueError("Invalid hostname")
 
         ipv4 = socket.gethostbyname(hostname)
 
@@ -33,6 +40,8 @@ def check_dns(url: str):
             "available": True,
 
             "hostname": hostname,
+
+            "ip_address": ipv4,
 
             "ipv4": ipv4,
 

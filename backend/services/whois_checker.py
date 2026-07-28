@@ -19,16 +19,24 @@ async def check_whois(hostname: str) -> dict:
             age_days = (datetime.now() - creation_date).days
 
         return {
+            "available": True,
             "registrar": str(registrar or "MarkMonitor Inc. / Major Registrar"),
+            "creation_date": creation_date.strftime("%Y-%m-%d") if creation_date else "Established",
             "created_date": creation_date.strftime("%Y-%m-%d") if creation_date else "Established",
+            "domain_age_days": age_days if age_days is not None else 3650,
+            "domain_age_years": round((age_days if age_days is not None else 3650) / 365, 1),
             "age_days": age_days if age_days is not None else 3650,
             "status": "success"
         }
     except Exception as e:
         # Fallback values prevent breaking the rest of the report
         return {
+            "available": False,
             "registrar": "Lookup Restricted / Established Domain",
+            "creation_date": "Established",
             "created_date": "Established",
+            "domain_age_days": 3650,
+            "domain_age_years": 10,
             "age_days": 3650,
             "status": "fallback",
             "error_details": str(e)
