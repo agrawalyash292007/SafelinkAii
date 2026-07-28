@@ -21,12 +21,12 @@ def extract_domain(raw_url: str) -> str:
 async def scan_url(payload: dict):
     raw_url = payload.get("url", "")
     if not raw_url:
-        return {"status": "error", "message": "URL parameter missing"}
+        return {"status": "error", "success": False, "message": "URL parameter missing", "data": None}
 
     try:
         url_info = normalize_and_validate_url(raw_url)
     except ValueError as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "success": False, "message": str(e), "data": None}
 
     normalized_url = url_info["normalized_url"]
     clean_host = url_info["hostname"]
@@ -104,8 +104,10 @@ async def scan_url(payload: dict):
         risk_res,
     )
     
-    return {
+    report = {
         "status": "success",
+        "success": True,
+        "message": "Scan completed successfully",
         "url": raw_url,
         "normalized_url": normalized_url,
         "domain": clean_host,
@@ -119,4 +121,9 @@ async def scan_url(payload: dict):
         "ai": ai_res,
         "risk_score": risk_res["score"],
         "verdict": risk_res["level"].upper()
+    }
+
+    return {
+        **report,
+        "data": report
     }
