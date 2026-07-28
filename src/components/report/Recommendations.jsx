@@ -6,10 +6,14 @@ import {
 export default function Recommendations({ report }) {
   if (!report) return null;
 
-  const recommendation = report.ai.recommendation;
+  const risk = report.risk || {};
+  const ai = report.ai || {};
+  const recommendation =
+    ai.recommendation ||
+    "Proceed carefully and avoid sharing sensitive information unless you trust the website.";
 
   const tips =
-    report.risk.level === "Low"
+    risk.level === "Low"
       ? [
           "Website appears safe to visit.",
           "Verify the URL before entering credentials.",
@@ -67,12 +71,21 @@ export default function Recommendations({ report }) {
 
       <div className="mt-8 flex gap-4">
 
-        <button className="flex-1 rounded-xl bg-blue-600 py-3 font-semibold flex items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="flex-1 rounded-xl bg-blue-600 py-3 font-semibold flex items-center justify-center gap-2"
+        >
           <Download size={18} />
-          Download Report
+          Print Report
         </button>
 
-        <button className="rounded-xl border border-slate-700 px-5">
+        <button
+          type="button"
+          onClick={() => window.location.assign("/")}
+          className="rounded-xl border border-slate-700 px-5"
+          aria-label="Start another scan"
+        >
           <RefreshCw />
         </button>
 

@@ -8,7 +8,11 @@ import {
 export default function AIExplanation({ report }) {
   if (!report) return null;
 
-  const reasons = report.risk?.reasons || [];
+  const risk = report.risk || {};
+  const ai = report.ai || {};
+  const reasons = Array.isArray(risk.reasons) ? risk.reasons : [];
+  const summary = ai.summary || "Threat analysis completed, but no AI summary was returned.";
+  const recommendation = ai.recommendation || "Proceed carefully and verify the website before sharing sensitive information.";
 
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-lg">
@@ -41,7 +45,7 @@ export default function AIExplanation({ report }) {
           </p>
 
           <h3 className="mt-2 text-3xl font-bold text-blue-400">
-            {report.risk.score}/100
+            {risk.score ?? 0}/100
           </h3>
         </div>
 
@@ -51,7 +55,7 @@ export default function AIExplanation({ report }) {
           </p>
 
           <h3 className="mt-2 text-3xl font-bold text-green-400">
-            {report.risk.level}
+            {risk.level || "Unknown"}
           </h3>
         </div>
       </div>
@@ -66,22 +70,24 @@ export default function AIExplanation({ report }) {
         </div>
 
         <p className="mt-4 leading-7 text-slate-300">
-          {report.ai.summary}
+          {summary}
         </p>
       </div>
 
-      <div className="mt-6 space-y-4">
-        {reasons.map((reason) => (
-          <Reason key={reason} text={reason} />
-        ))}
-      </div>
+      {reasons.length > 0 && (
+        <div className="mt-6 space-y-4">
+          {reasons.map((reason) => (
+            <Reason key={reason} text={reason} />
+          ))}
+        </div>
+      )}
 
       <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
         <div className="flex items-center gap-3">
           <ShieldAlert className="text-red-400" />
 
           <p className="text-sm leading-6 text-slate-300">
-            {report.ai.recommendation}
+            {recommendation}
           </p>
         </div>
       </div>
